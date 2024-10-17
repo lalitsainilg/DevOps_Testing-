@@ -1,0 +1,127 @@
+DNS Installation and configuration Steps 
+Insall bind and bind-utils  yum install bind bind-utils -y 
+Enable named service  systemctl enable –now named 
+Open configuration file for named  vim /etc/named.conf 
+Delete all the existing entries in the file  :%d
+Get Inserted in the file and edit 
+ options {
+	directory “/var/named”;
+	recursion no;
+zone “wordworld.tech” IN  {
+	type master;
+	file “test”;
+};  
+save  :wq!
+Check  named-checkconf /etc/named.conf 
+Go to data directory  cd /var/named
+Copy named.empty file by the name of file you have mentioned in /etc/named.conf  
+cp -p named.empty test
+Edit the file  vim test
+Change TTL value from 3H to 1M 
+Edit file by making records  
+@			IN	NS	ns1.wordworld.tech.
+@			IN	NS	ns2.wordworld.tech.
+ns1			IN	A	ip of nameserver [same instance you are making entry on now]
+ns2			IN	A	ip of nameserver [same instance you are making entry on now]
+wordworld.tech.	IN	A	ip of instance you have configured webserver on 
+photos			IN	A	ip of instance you have configured webserver on
+docs 			IN	A	ip of instance you have configured webserver on
+save  :wq!
+
+Restart named service  systemctl restart named 
+Change IP in child nameserver and edit new nameserver in nameserver entry of histinger that is “ns1.wordworld.tech” and “ns2.wordworld.tech”. don’t forget to remove existing nameserver entries i.e., “ns1-parking.com” “ns2-parking.com”.
+Check  nslookup wordworld.tech localhost 
+Allow port 53 in security group of name server 
+
+
+
+Steps to configure Webserver [ http ]
+install httpd package  yum install httpd -y 
+enable httpd sevice  systemctl enable –now httpd 
+move to the data directory  cd /var/www/html 
+keep content here else make index.html file  vim index.html [ write what you want ]
+if want to keep website content !!!
+copy link address from “free css template” and wget it in data directory  wget link 
+unzip the zip file you have received  unzip link 
+move all the content of unzipped directory outside  mv unzipped-directory/*  .
+restart the service  systemctl restart httpd 
+allow port 80 on security group of the web server 
+
+Steps to Configure Virtual Hosting 
+go to the configuration directory and make files for sub domain  cd /etc/httpd/conf.d
+now make files with name of sub domain with extension “.conf” touch photos.conf  mail.conf  docs.conf 
+edit these files individually with their subdomain address and their document roots 
+<virtualhost *:80>
+servername photos.wordworld.tech
+documentroot /var/www/photos
+</virtualhost>  
+Save :wq!
+Now create document directories for each subdomain in /var/www [ e.g mkdir /var/www/photos ]
+Check  httpd -t
+Steps to allow indexing for virtual hosts 
+change in the conf file [ photos.conf ]
+<virtualhost *:80>
+servername photos.wordworld.tech
+documentroot /var/www/photos
+</virtualhost>  
+<directory /var/www/photos>
+options indexes 
+</directory> 
+Save :wq!
+
+
+
+Steps to allow symbolic link for virtual hosting 
+<virtualhost *:80>
+servername photos.wordworld.tech
+documentroot /var/www/photos
+</virtualhost>  
+<directory /var/www/photos>
+options followsymlinks indexes 
+</directory> 
+
+Steps to allow file priority in virtual hosting 
+<virtualhost *:80>
+servername photos.wordworld.tech
+documentroot /var/www/photos
+</virtualhost>  
+<directory /var/www/photos>
+options followsymlinks  indexes 
+directoryindex  prod.html   test.html   index.html  
+</directory> 
+[ note : use indexes option with folowsymlinks always ]
+
+Steps to allow or deny specific IP 
+<virtualhost *:80>
+servername photos.wordworld.tech
+OBOBdocumentroot /var/www/photos
+OB</virtualhost>  
+<directory /var/www/photos>
+OBoptions followsymlinks  indexes 
+OBdirectoryindex prod.html   test.html   index.html  
+OBorder allow,deny 
+OBallow from IP
+OBelse
+OBorder deny,allow 
+OBdeny from IP	
+OB</directory> 
+OBSteps to change port for subdomain 
+OBListen 82
+OB<virtualhost *:82>
+servername photos.wordworld.tech
+OBdocumentroot /var/www/photos
+</virtualhost>  
+OBSave :wq!
+OBTurn off selinux security  setenforce 0 
+OBAllow port 82 0n security group of the instance 
+OBRestart httpd service  systemctl restart httpd 
+
+OBOBSteps to configure secure connection [ https ]
+Configure epel repository on the webserver.
+OBInstall suitable packages  yum Install mod_ssl certbot python3-certbot-apache -y 
+OBRestart the service i.e., httpd  systemctl restart httpd 
+OBInitialise certbot interface  certbot --apache 
+*Fill up the information in the interface 
+Restart the service  systemctl restart httpd 
+Allow port 443 [ httpd ] port on firewall 
+
